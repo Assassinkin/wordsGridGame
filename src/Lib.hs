@@ -9,7 +9,7 @@ module Lib
     ) where
 
 import Data.Maybe (catMaybes)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, transpose)
 
 type Grid = [String]
 
@@ -31,9 +31,20 @@ formatGrid = unlines
 --   in or $ map (findWordInLine word) lines
 -- All of that is good and stuff but we would like a list of all the words that exist not true/false
 
+getLines :: Grid -> [String]
+getLines grid =
+  let lines = grid ++ (transpose grid) ++ (transpose (skew grid)) ++  (transpose (skew (reverse grid)))
+  in lines ++ (map reverse lines)
+-- lines = horizontal ++ vertical ++ diagonal1 + diagonal2
+
+skew :: Grid -> Grid
+skew [] = []
+skew (l:ls) = l : skew (map indent ls)
+  where indent line = '_' : line
+
 findWord :: Grid -> String -> Maybe String
 findWord grid word =
-  let lines = grid ++ (map reverse grid)
+  let lines = getLines grid
       found = or $ map (findWordInLine word) lines
   in if found then Just word else Nothing
 
