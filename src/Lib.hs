@@ -1,23 +1,52 @@
 module Lib
-    ( grid
-    , languages
-    , formatGrid
+    ( formatGrid
     , outputGrid
     , findWord
     , findWordInLine
     , findWords
+    , zipOverGrid
+    , zipOverGridWith
+    , gridWithCoords
+    , cell2char
+    , Cell(Cell,Indent)
     ) where
 
 import Data.Maybe (catMaybes)
 import Data.List (isInfixOf, transpose)
 
-type Grid = [String]
+data Cell = Cell (Integer, Integer) Char
+          | Indent
+            deriving (Eq, Ord, Show)
+type Grid a = [[a]]
 
-outputGrid :: Grid -> IO ()
+zipOverGrid :: Grid a -> Grid b -> Grid (a,b)
+zipOverGrid = zipWith zip
+
+zipOverGridWith :: (a -> b -> c) -> Grid a -> Grid b -> Grid c
+zipOverGridWith = zipWith . zipWith
+
+mapOverGrid :: (a -> b) -> Grid a -> Grid b
+mapOverGrid = map . map
+
+coordsGrid :: Grid (Integer, Integer)
+coordsGrid =
+  let rows = map repeat [0 ..]
+      cols = repeat [0 ..]
+  in zipOverGrid rows cols
+
+gridWithCoords :: Grid Char -> Grid Cell
+gridWithCoords grid = zipOverGridWith Cell coordsGrid grid
+
+
+outputGrid :: Grid Cell -> IO ()
 outputGrid grid = putStrLn (formatGrid grid)
 
-formatGrid :: Grid -> String
-formatGrid = unlines
+formatGrid :: Grid Cell -> String
+formatGrid = unlines . mapOverGrid cell2char
+
+cell2char :: Cell -> Char
+cell2char (Cell _ c) = c
+cell2char Indent = '?'
 
 -- findWord :: Grid -> String -> Bool
 -- findWord grid word = or (map (findWordInLine word) grid)
@@ -31,56 +60,30 @@ formatGrid = unlines
 --   in or $ map (findWordInLine word) lines
 -- All of that is good and stuff but we would like a list of all the words that exist not true/false
 
-getLines :: Grid -> [String]
+getLines :: Grid Cell -> [[Cell]]
 getLines grid =
   let lines = grid ++ (transpose grid) ++ (transpose (skew grid)) ++  (transpose (skew (reverse grid)))
   in lines ++ (map reverse lines)
 -- lines = horizontal ++ vertical ++ diagonal1 + diagonal2
 
-skew :: Grid -> Grid
+skew :: Grid Cell -> Grid Cell
 skew [] = []
 skew (l:ls) = l : skew (map indent ls)
-  where indent line = '_' : line
+  where indent line = Indent : line
 
-findWord :: Grid -> String -> Maybe String
+findWord :: Grid Cell -> String -> Maybe [Cell]
 findWord grid word =
   let lines = getLines grid
       found = or $ map (findWordInLine word) lines
   in if found then Just word else Nothing
 
-findWords :: Grid -> [String] -> [String]
+findWords :: Grid Cell -> [String] -> [[Cell]]
 findWords grid words =
   let foundWords = map (findWord grid ) words
   in catMaybes foundWords
 
-findWordInLine :: String -> String -> Bool
+findWordInLine :: String -> [Cell] -> Maybe [Cell]
 findWordInLine = isInfixOf
 -- the func can also be written as findWordInLine word line = isInfixOf word line
 -- but as we can see the 2 funct have the same inputs so we just can use "findWordInLine = isInfixOf"
 -- we can use something = isInfix String String or a better notation would be String `isInfixOf` String
-
-grid = [ "__C________R___"
-       , "__SI________U__"
-       , "__HASKELL____B_"
-       , "__A__A_____S__Y"
-       , "__R___B___C____"
-       , "__PHP____H_____"
-       , "____S_LREP_____"
-       , "____I__M_Y__L__"
-       , "____L_E__T_O___"
-       , "_________HB____"
-       , "_________O_____"
-       , "________CN_____"
-       ]
-
-languages = [ "BASIC"
-            , "COBAL"
-            , "CSHARP"
-            , "HASKELL"
-            , "LISP"
-            , "PERL"
-            , "PHP"
-            , "PYTHON"
-            , "RUBY"
-            , "SCHEME"
-            ]
