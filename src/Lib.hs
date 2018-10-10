@@ -18,7 +18,7 @@ module Lib
     , formatGame
     , completed
     ) where
-
+--ddd
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.List (isInfixOf, transpose)
 import qualified Data.Map as M
