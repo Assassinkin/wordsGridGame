@@ -17,10 +17,15 @@ module Lib
     , playGame
     , formatGame
     , completed
+    , makeRandomGrid
+    , fillInBlanks
+    , formatGameGrid
     ) where
 
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.List (isInfixOf, transpose)
+import System.Random
+import Data.Char (toLower)
 import qualified Data.Map as M
 
 data Game = Game {
@@ -63,15 +68,24 @@ playGame game word =
       in game { gameWords = newDict }
 
 formatGame :: Game -> String
-formatGame game =
-  let grid = gameGrid game
-  in formatGrid grid
-     ++ "\n\n"
-     ++ "You found "
-     ++ (show $ score game)
-     ++ "/"
-     ++ (show $ totalWords game)
-     ++ " words."
+formatGame game = formatGameGrid game
+                ++ "\n\n"
+                ++ "You found "
+                ++ (show $ score game)
+                ++ "/"
+                ++ (show $ totalWords game)
+                ++ " words."
+
+makeRandomGrid gen =
+  let (gen1, gen2) = split gen
+      row = randomRs ('A', 'Z') gen1
+  in row : makeRandomGrid gen2
+
+fillInBlanks gen grid =
+  let r = makeRandomGrid gen
+      fill '_' r = r
+      fill c _ = c
+  in zipOverGridWith fill grid r
 
 zipOverGrid :: Grid a -> Grid b -> Grid (a,b)
 zipOverGrid = zipWith zip
@@ -91,6 +105,16 @@ coordsGrid =
 gridWithCoords :: Grid Char -> Grid Cell
 gridWithCoords grid = zipOverGridWith Cell coordsGrid grid
 
+formatGameGrid :: Game -> String
+formatGameGrid game =
+  let grid = gameGrid game
+      dict = gameWords game :: M.Map String (Maybe [Cell])
+      cellSet = concat . catMaybes . M.elems $ dict
+      formatCell cell =
+        let char = cell2char cell
+        in if cell `elem` cellSet then char else toLower char
+      charGrid = mapOverGrid formatCell grid
+  in unlines charGrid
 
 outputGrid :: Grid Cell -> IO ()
 outputGrid grid = putStrLn (formatGrid grid)
