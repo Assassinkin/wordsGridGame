@@ -1,8 +1,9 @@
 # Words haskell game
 
-This is a learning project. don't laugh tat me xD
+This is a learning project. don't laugh at me xD
 
 ***version: 0.1.0***
+
 
 * Building:
 `stack build`
@@ -12,4 +13,4 @@ This is a learning project. don't laugh tat me xD
  `stack test`
 
  * Playing the game:
- run the binary or run `stack exec words` and follow the instructions.
+ Execute the binary or run `stack exec words` and follow the instructions.
