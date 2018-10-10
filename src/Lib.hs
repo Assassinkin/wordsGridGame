@@ -3,21 +3,75 @@ module Lib
     , outputGrid
     , findWord
     , findWordInLine
+    , findWordInCellLinePrefix
     , findWords
     , zipOverGrid
     , zipOverGridWith
     , gridWithCoords
     , cell2char
     , Cell(Cell,Indent)
+    , Game(gameGrid, gameWords)
+    , makeGame
+    , totalWords
+    , score
+    , playGame
+    , formatGame
+    , completed
     ) where
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.List (isInfixOf, transpose)
+import qualified Data.Map as M
 
+data Game = Game {
+              gameGrid :: Grid Cell,
+              gameWords :: M.Map String (Maybe [Cell])
+            }
+            deriving Show
 data Cell = Cell (Integer, Integer) Char
           | Indent
             deriving (Eq, Ord, Show)
 type Grid a = [[a]]
+
+makeGame :: Grid Char -> [String] -> Game
+makeGame grid words =
+  let gwc = gridWithCoords grid
+      tuplify word = (word, Nothing)
+      list = map tuplify words
+      dict = M.fromList list
+  in Game gwc dict
+
+totalWords :: Game -> Int
+totalWords game = length . M.keys $ gameWords game
+
+score :: Game -> Int
+score game = length . catMaybes . M.elems $ gameWords game
+
+completed :: Game -> Bool
+completed game = score game == totalWords game
+
+playGame :: Game -> String -> Game
+playGame game word | not $ M.member word (gameWords game) = game
+playGame game word =
+  let grid = gameGrid game
+      foundWord = findWord grid word
+  in case foundWord of
+    Nothing -> game
+    Just cs ->
+      let dict = gameWords game
+          newDict = M.insert word foundWord dict
+      in game { gameWords = newDict }
+
+formatGame :: Game -> String
+formatGame game =
+  let grid = gameGrid game
+  in formatGrid grid
+     ++ "\n\n"
+     ++ "You found "
+     ++ (show $ score game)
+     ++ "/"
+     ++ (show $ totalWords game)
+     ++ " words."
 
 zipOverGrid :: Grid a -> Grid b -> Grid (a,b)
 zipOverGrid = zipWith zip
@@ -74,8 +128,8 @@ skew (l:ls) = l : skew (map indent ls)
 findWord :: Grid Cell -> String -> Maybe [Cell]
 findWord grid word =
   let lines = getLines grid
-      found = or $ map (findWordInLine word) lines
-  in if found then Just word else Nothing
+      foundWords = map (findWordInLine word) lines
+  in listToMaybe (catMaybes foundWords)
 
 findWords :: Grid Cell -> [String] -> [[Cell]]
 findWords grid words =
@@ -83,7 +137,19 @@ findWords grid words =
   in catMaybes foundWords
 
 findWordInLine :: String -> [Cell] -> Maybe [Cell]
-findWordInLine = isInfixOf
+findWordInLine _ [] = Nothing
+findWordInLine word line =
+  let found = findWordInCellLinePrefix [] word line
+  in case found of
+    Nothing -> findWordInLine word (tail line)
+    cs@(Just _) -> cs
+
+findWordInCellLinePrefix :: [Cell] -> String -> [Cell] -> Maybe [Cell]
+findWordInCellLinePrefix acc (x:xs) (c:cs) | x == cell2char c
+  = findWordInCellLinePrefix (c : acc) xs cs
+findWordInCellLinePrefix acc [] _ = Just $ reverse acc
+findWordInCellLinePrefix _ _ _ = Nothing
+
 -- the func can also be written as findWordInLine word line = isInfixOf word line
 -- but as we can see the 2 funct have the same inputs so we just can use "findWordInLine = isInfixOf"
 -- we can use something = isInfix String String or a better notation would be String `isInfixOf` String
